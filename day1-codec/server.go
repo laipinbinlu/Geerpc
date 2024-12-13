@@ -50,21 +50,26 @@ func Accept(lis net.Listener) { DefaultServer.Accept(lis) }
 
 func (s *Server) ServeConn(conn io.ReadWriteCloser) {
 	var opt Option
+	// json.NewDecoder 从conn接口（io.reader）读取数据，进行解码->Decode 会把从 conn 中读取到的 JSON 数据解码到这个对象(&opt)中。(将json数据变成结构体对象)
 	if err := json.NewDecoder(conn).Decode(&opt); err != nil { // 解码错误
 		log.Println("rpc server : option decode error", err)
 		return
 	}
+
 	if opt.MagicNumber != MagicNumber { // 协议不对--错误
 		log.Printf("rpc server: invalid magic number %x", opt.MagicNumber)
 		return
 	}
-	f := codec.NewCodecFuncMap[opt.CodecType] // 传入解码类型-->得到处理函数
+
+	f := codec.NewCodecFuncMap[opt.CodecType] // 传入解码类型-->得到处理函数f-> 返回接口方法
 	if f == nil {
 		log.Printf("rpc server: invalid codec type %v", opt.CodecType)
 		return
 	}
-	// 传入的消息都没有错误（校验） --->处理用户传入的消息
+
+	// 传入的消息都没有错误（校验） ---> 处理用户传入的消息request请求
 	s.serveCodec(f(conn))
+
 	defer func() { // 不管发生什么，都要关闭连接
 		_ = conn.Close()
 	}()
@@ -90,7 +95,7 @@ func (s *Server) serveCodec(cc codec.Codec) { // 处理请求 -> 1.先是读取�
 	_ = cc.Close()
 }
 
-func (s *Server) readRequest(cc codec.Codec) (*request, error) { // 读取请求
+func (s *Server) readRequest(cc codec.Codec) (*request, error) { // 1.读取请求内容
 	h, err := s.readRequestHeader(cc) // 读取请求的头部
 	if err != nil {
 		return nil, err
@@ -116,14 +121,16 @@ func (s *Server) readRequestHeader(cc codec.Codec) (*codec.Header, error) { // �
 	return &h, nil // 返回头部结果
 }
 
-func (s *Server) sendResponse(cc codec.Codec, h *codec.Header, body interface{}, sending *sync.Mutex) {
+// 返回响应
+func (s *Server) sendResponse(cc codec.Codec, h *codec.Header, reply interface{}, sending *sync.Mutex) {
 	sending.Lock()
 	defer sending.Unlock()
-	if err := cc.Write(h, body); err != nil {
+	if err := cc.Write(h, reply); err != nil {
 		log.Println("rpc server : write response error:", err)
 	}
 }
 
+// 处理请求
 func (s *Server) handleRequest(cc codec.Codec, req *request, sending *sync.Mutex, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Println(req.h, req.argv.Elem())

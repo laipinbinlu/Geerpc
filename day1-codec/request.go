@@ -6,7 +6,8 @@ import (
 )
 
 type request struct {
-	h      *codec.Header // 头部
-	argv   reflect.Value // body
+	h *codec.Header // 头部
+	//argv, replyv reflect.Value // body   -- 与下面的同理
+	argv   reflect.Value
 	replyv reflect.Value
 }

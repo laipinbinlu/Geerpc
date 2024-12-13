@@ -28,7 +28,7 @@ func NewGobCodec(conn io.ReadWriteCloser) Codec {
 }
 
 func (g *GobCodec) ReadHeader(h *Header) error { // 读取头部
-	return g.dec.Decode(h) // gob解码
+	return g.dec.Decode(h) // gob解码--->将head的内容解码为对应的结构体对象 h中
 }
 
 func (g *GobCodec) ReadBody(body interface{}) error { // 读取消息体
@@ -45,7 +45,7 @@ func (g *GobCodec) Write(h *Header, body interface{}) error {
 
 	}()
 
-	if err := g.enc.Encode(h); err != nil { // 编码header
+	if err := g.enc.Encode(h); err != nil { // 编码header  --->将h编码为指定格式输出到指定的io.writer上
 		log.Println("rpc codec: gob error encoding header", err)
 		return err
 	}
